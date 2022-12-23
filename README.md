@@ -1,4 +1,4 @@
-# WhatsApp Chatbot using OepnAI
+# WhatsApp Chatbot using OepnAI [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fphysicalit%2FWhatsApp-Chatbot-using-OepnAI.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fphysicalit%2FWhatsApp-Chatbot-using-OepnAI?ref=badge_shield)
 This is a Python wrapper for interacting with the WhatsApp API. It includes a class for sending template messages and handling webhook notifications from the WhatsApp API.
 
 ## Prerequisites
