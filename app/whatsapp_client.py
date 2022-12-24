@@ -1,8 +1,39 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+MIT License
+
+Copyright (c) 2022 Mihuleac Sergiu
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 import os
-import requests
 import json
 import openai
+import logging
+import requests
+from flask import jsonify
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -26,7 +57,7 @@ class WhatsAppWrapper:
         self.API_URL = self.API_URL + os.environ.get("WHATSAPP_NUMBER_ID")
         self.thread = []
 
-    def send_template_message(self, body, phone_number):
+    def send_message(self, body, phone_number):
         """Send a text message to the specified phone number using WhatsApp API
 
         Args:
@@ -47,7 +78,8 @@ class WhatsAppWrapper:
         response = requests.request("POST", f"{self.API_URL}/messages", headers=self.headers, data=payload)
         
         # Check if request was successful
-        assert response.status_code == 200, "Error sending message"
+        if response.status_code in (400, 401, 404, 500):
+            raise ValueError(f"Error sending message: HTTP status code {response.status_code}")
         return response.status_code
 
     def process_webhook_notification(self, data):
@@ -64,26 +96,14 @@ class WhatsAppWrapper:
             with open("db.json", 'r') as f:
                 self.thread = json.load(f)
 
-        response = []
-
-        # Extract relevant information from webhook data
-        for entry in data["entry"]:
-            for change in entry["changes"]:
-                response.append(
-                    {
-                        "type": change["field"],
-                        "from": change["value"]["metadata"]["display_phone_number"],
-                        "body": change["value"],
-                    }
-                )
-
         # Get phone number and message from response
         try:
-            telefon = response[0]["body"]["contacts"][0]["wa_id"]
-            reply = response[0]["body"]["messages"][0]["text"]["body"]
+            entry = data["entry"][0]["changes"][0]["value"]
+            telefon = entry["contacts"][0]["wa_id"]
+            reply = entry["messages"][0]["text"]["body"]
         except:
-            print("Could not read callback. Object has changed")
-            return response
+            logger.warning("Could not read callback. Object has changed")
+            return jsonify({"error": "Missing request body"}), 400
         
         # Check if user reply is "reset"
         if reply == "reset":
@@ -92,8 +112,8 @@ class WhatsAppWrapper:
             # Clear conversation thread
             self.thread = []
             # Send message to user indicating that the file has been deleted
-            self.send_template_message("The conversation has been reset.", telefon)
-            return
+            self.send_message("The conversation has been reset.", telefon)
+            return jsonify({"status": "success"}), 200
 
         # Add human message to conversation thread
         self.thread.append(f"\nHuman: {reply}")
@@ -135,7 +155,7 @@ class WhatsAppWrapper:
             json.dump(self.thread, f, indent=2)
 
         # Send Simon's response to phone number using WhatsApp API
-        self.send_template_message(
+        self.send_message(
             response["choices"][0]["text"].split("\nSimon: ")[-1], telefon
             )
-        return response
+        return jsonify({"status": "success"}), 200

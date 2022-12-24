@@ -33,7 +33,7 @@ curl -X POST \
   -H 'Content-Type: application/json' \
   -d '{
     "body": "Hello World!",
-    "phone_number": "1234567890"
+    "phone_number": "40762296614"
 }'
 ```
 ### Processing a webhook notification
@@ -43,28 +43,15 @@ curl -X POST \
   http://localhost:5000/webhook/ \
   -H 'Content-Type: application/json' \
   -d '{
-    "data": {
-        "entry": [
-            {
-                "changes": [
-                    {
-                        "field": "messages",
-                        "value": {
-                            "metadata": {
-                                "display_phone_number": "1234567890"
-                            },
-                            "messages": [
-                                {
-                                    "text": {
-                                        "body": "Hello World!"
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        ]
+        data = {
+        "entry": [{
+            "changes": [{
+                "value": {
+                    "contacts": [{"wa_id": "1234567890"}],
+                    "messages": [{"text": {"body": "Hello"}}]
+                }
+            }]
+        }]
     }
 }'
 ```
@@ -88,6 +75,21 @@ heroku config:set WHATSAPP_HOOK_TOKEN=some generated token
 4. Deploy the app to Heroku:
 ```
 git push heroku master:main
+```
+
+### To deploy the app with docker, you can follow these steps:
+To build a Docker image from this Dockerfile, run the following command:
+```
+docker build -t openai-whatsapp-bot:latest .
+```
+To start a container from the image, run the following command:
+```
+docker run -p 5000:5000 \
+           -e OPENAI_API_KEY=your_openai_api_key \
+           -e WHATSAPP_API_TOKEN=your_whatsapp_api_token \
+           -e WHATSAPP_NUMBER_ID=your_whatsapp_number_id \
+           -e WHATSAPP_HOOK_TOKEN=some_generated_token \
+           openai-whatsapp-bot:latest
 ```
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
